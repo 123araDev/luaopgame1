@@ -1,5 +1,12 @@
 local internet = require("internet")
 local event = require("event")
+local gpu = require("component").gpu
+local windows = require("windows")
+
+local width, height = gpu.getResolution()
+local previewWindow = windows.create(1, 1, width, height - 1) -- Preview window
+local urlTextBox = windows.create(1, height, width - 10, 1) -- URL input textbox
+local goButton = windows.create(width - 9, height, 9, 1) -- Go button
 
 -- Function to fetch the webpage content
 local function fetchPage(url)
@@ -11,41 +18,35 @@ local function fetchPage(url)
     return content
 end
 
--- Function to extract a preview of the webpage content
-local function extractPreview(content)
-    -- Remove HTML tags and convert special characters
-    local preview = content:gsub("<.-?>", ""):gsub("&.-;", "")
-
-    -- Limit the preview length to 200 characters
-    if #preview > 200 then
-        preview = preview:sub(1, 200) .. "..."
-    end
-
-    return preview
+-- Function to render the webpage preview
+local function renderPreview(content)
+    previewWindow:clear()
+    previewWindow:setCursorPos(1, 1)
+    previewWindow:write(content, nil, 0xFFFFFF)
 end
 
 -- Main program loop
 while true do
-    -- Ask the user for a URL
-    io.write("Enter a URL (or 'exit' to quit): ")
-    local input = io.read()
+    -- Render the GUI elements
+    gpu.fill(1, 1, width, height, " ")
+    urlTextBox:render()
+    goButton:render()
+    gpu.set(1, height, "Enter a URL:")
+    gpu.set(width - 8, height, "Go")
 
-    if input == "exit" then
-        break
-    else
-        -- Add "http://" to the URL if not present
-        if not input:match("^http://") and not input:match("^https://") then
-            input = "http://" .. input
-        end
-
+    -- Wait for user input
+    local _, _, x, y = event.pull("touch")
+    if urlTextBox:isClicked(x, y) then
+        urlTextBox:focus()
+    elseif goButton:isClicked(x, y) then
         -- Fetch the webpage content
-        local success, content = pcall(fetchPage, input)
+        local url = urlTextBox:getText()
+        local success, content = pcall(fetchPage, url)
         if not success then
-            print("Error:", content)
-        else
-            -- Extract and display the preview
-            local preview = extractPreview(content)
-            print("Preview:\n" .. preview)
+            content = "Error: " .. content
         end
+
+        -- Render the preview
+        renderPreview(content)
     end
 end
