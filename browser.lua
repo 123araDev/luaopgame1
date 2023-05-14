@@ -1,12 +1,27 @@
 local internet = require("internet")
 local event = require("event")
 
--- Function to fetch and display a webpage
-local function browse(url)
+-- Function to fetch the webpage content
+local function fetchPage(url)
     local response = internet.request(url)
+    local content = ""
     for chunk in response do
-        io.write(chunk)
+        content = content .. chunk
     end
+    return content
+end
+
+-- Function to extract a preview of the webpage content
+local function extractPreview(content)
+    -- Remove HTML tags and convert special characters
+    local preview = content:gsub("<.-?>", ""):gsub("&.-;", "")
+
+    -- Limit the preview length to 200 characters
+    if #preview > 200 then
+        preview = preview:sub(1, 200) .. "..."
+    end
+
+    return preview
 end
 
 -- Main program loop
@@ -23,10 +38,14 @@ while true do
             input = "http://" .. input
         end
 
-        -- Fetch and display the webpage
-        local success, err = pcall(browse, input)
+        -- Fetch the webpage content
+        local success, content = pcall(fetchPage, input)
         if not success then
-            print("Error:", err)
+            print("Error:", content)
+        else
+            -- Extract and display the preview
+            local preview = extractPreview(content)
+            print("Preview:\n" .. preview)
         end
     end
 end
